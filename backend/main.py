@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
 from .logic_engine import DrowsinessDetector
+from .driver_alertness import DriverAlertnessScorer
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +22,7 @@ app.add_middleware(
 
 # Initialize Detector Logic
 detector = DrowsinessDetector()
+alertness_scorer = DriverAlertnessScorer()
 
 @app.get("/")
 async def root():
@@ -38,9 +40,27 @@ async def websocket_endpoint(websocket: WebSocket):
             data_text = await websocket.receive_text()
             data = json.loads(data_text)
             
-            # Process through logic engine
+            # Process through logic engine (detection logic unchanged)
             result = detector.process_frame(data)
-            
+
+            # Update continuous driver alertness score (read-only for UI)
+            try:
+                timestamp = float(data.get("timestamp", 0.0))
+                ear = float(data.get("ear", 1.0))
+                pitch = float(data.get("pitch", 0.0))
+                yaw = float(data.get("yaw", 0.0))
+                score = alertness_scorer.update_from_signals(
+                    ear=ear,
+                    pitch=pitch,
+                    yaw=yaw,
+                    timestamp=timestamp,
+                )
+                result["alertness_score"] = round(score, 1)
+            except Exception as e:
+                logger.error(f"Error updating alertness score: {e}")
+                # Fall back to the last known score if available
+                result.setdefault("alertness_score", alertness_scorer.get_score())
+
             # Send result back to frontend
             await websocket.send_text(json.dumps(result))
             

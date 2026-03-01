@@ -5,7 +5,14 @@ import Alerts from './components/Alerts';
 import './App.css';
 
 function App() {
-  const [status, setStatus] = useState({ state: "SAFE", ear: 0, pitch: 0, yaw: 0, is_alert: false });
+  const [status, setStatus] = useState({
+    state: "SAFE",
+    ear: 0,
+    pitch: 0,
+    yaw: 0,
+    is_alert: false,
+    alertness_score: 100,
+  });
   const wsRef = useRef(null);
 
   // Connect to WebSocket
@@ -49,6 +56,9 @@ function App() {
     // Actually, to avoid lag, let's wait for backend response
   }, []);
 
+  const isStrongAlert = status.is_alert || status.state === "DROWSY";
+  const isWarningAlert = status.state === "WARNING";
+
   return (
     <div className={`app-container ${status.state === "DROWSY" ? "alert-mode" : ""}`}>
       <div className="glass-panel">
@@ -65,7 +75,7 @@ function App() {
           </div>
         </div>
       </div>
-      <Alerts isAlert={status.is_alert} />
+      <Alerts isAlert={isStrongAlert} isWarning={isWarningAlert} />
     </div>
   );
 }
