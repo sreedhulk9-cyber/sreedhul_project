@@ -181,164 +181,94 @@ const StatusPanel = ({ status }) => {
     // Simple qualitative analysis for per-metric colouring
     const blinkRateColor =
         blinkRate > 30 ? 'var(--color-danger)' :
-        blinkRate > 20 ? 'var(--color-warning)' :
-        'var(--color-safe)';
+            blinkRate > 20 ? 'var(--color-warning)' :
+                'var(--color-safe)';
 
     const eyeClosureColor =
         currentClosureDuration > 1 ? 'var(--color-danger)' :
-        currentClosureDuration > 0.3 ? 'var(--color-warning)' :
-        'var(--color-safe)';
+            currentClosureDuration > 0.3 ? 'var(--color-warning)' :
+                'var(--color-safe)';
 
     const yawningColor =
         yawningCount > 3 ? 'var(--color-danger)' :
-        yawningCount > 0 ? 'var(--color-warning)' :
-        'var(--color-safe)';
+            yawningCount > 0 ? 'var(--color-warning)' :
+                'var(--color-safe)';
 
     const headStabilityColor =
         headStability < 60 ? 'var(--color-danger)' :
-        headStability < 80 ? 'var(--color-warning)' :
-        'var(--color-safe)';
+            headStability < 80 ? 'var(--color-warning)' :
+                'var(--color-safe)';
 
     return (
         <div className={classNames("status-panel", { "status-drowsy": state === "DROWSY" })}>
             <div className="status-header">
-                <div className="status-heading">
-                    <span className="driver-status-label">Driver Status</span>
-                    <h2 style={{ color: gaugeColor }}>{driverStatusText}</h2>
-                </div>
-                <div className="status-icon" style={{ color: getStatusColor(state) }}>
-                    {getIcon(state)}
-                </div>
+                <span className="driver-status-label">Condition Monitoring</span>
+                <h2 style={{ color: gaugeColor }}>{driverStatusText}</h2>
             </div>
 
             <div className="alertness-section">
-                <div className="alertness-gauge-wrapper">
-                    <div className="gauge">
-                        <div className="gauge-ring" />
-                        <div
-                            className="gauge-needle"
-                            style={{
-                                transform: `translate(-50%, -100%) rotate(${(score / 100) * 180 - 90}deg)`,
-                                borderColor: gaugeColor,
-                            }}
-                        />
-                        <div className="gauge-center" />
-                        <div className="gauge-label">Alertness</div>
-                        <div className="gauge-value" style={{ color: gaugeColor }}>
-                            {score.toFixed(0)}
-                        </div>
-                    </div>
+                <div className="alertness-heading">
+                    <span className="alertness-label">Alertness Level</span>
+                    <span className="alertness-value" style={{ color: gaugeColor }}>{score.toFixed(0)}</span>
                 </div>
-
                 <div className="battery-indicator">
                     <div className="battery-body">
                         <div
                             className="battery-fill"
                             style={{
-                                width: `${Math.max(5, score)}%`,
-                                background: `linear-gradient(90deg, var(--color-safe), var(--color-warning-soft), var(--color-warning), var(--color-orange-deep), var(--color-danger))`,
+                                width: `${Math.max(8, score)}%`,
+                                background: score < 30 ? 'var(--color-danger)' : 'linear-gradient(90deg, var(--color-icy) 0%, #fff 100%)',
+                                boxShadow: score > 30 ? '0 0 20px rgba(165, 193, 229, 0.4)' : '0 0 20px rgba(255, 92, 92, 0.4)'
                             }}
                         />
                     </div>
-                    <div className="battery-cap" />
-                    <span className="battery-label">Energy Reserve</span>
                 </div>
             </div>
 
-            <div className="metrics-grid dashboard-metrics-grid">
-                <div className="metrics-row">
-                    <div className="metric-card metric-chip">
-                        <span className="metric-label">Blink Rate</span>
-                        <span className="metric-value" style={{ color: blinkRateColor }}>
-                            {blinkRate.toFixed(1)} <span className="metric-unit">blinks/min</span>
-                        </span>
-                    </div>
-                    <div className="metric-card metric-chip">
-                        <span className="metric-label">Eye Closure</span>
-                        <span className="metric-value" style={{ color: eyeClosureColor }}>
-                            {currentClosureDuration.toFixed(2)}{' '}
-                            <span className="metric-unit">s</span>
-                        </span>
-                    </div>
+            <div className="metrics-grid">
+                <div className="metric-card">
+                    <span className="metric-label">EYE CLOSURE</span>
+                    <span className="metric-value" style={{ color: eyeClosureColor }}>
+                        {currentClosureDuration.toFixed(2)}s
+                    </span>
                 </div>
-                <div className="metrics-row">
-                    <div className="metric-card metric-chip">
-                        <span className="metric-label">Yawning Count</span>
-                        <span className="metric-value" style={{ color: yawningColor }}>
-                            {yawningCount}{' '}
-                            <span className="metric-unit">/ session</span>
-                        </span>
-                    </div>
-                    <div className="metric-card metric-chip">
-                        <span className="metric-label">Head Stability</span>
-                        <span className="metric-value" style={{ color: headStabilityColor }}>
-                            {headStability.toFixed(0)}{' '}
-                            <span className="metric-unit">/ 100</span>
-                        </span>
-                    </div>
+                <div className="metric-card">
+                    <span className="metric-label">BLINK RATE</span>
+                    <span className="metric-value" style={{ color: blinkRateColor }}>
+                        {blinkRate.toFixed(1)}
+                    </span>
                 </div>
-
-                <div className="metrics-row raw-metrics-row">
-                    <div className="metric-card">
-                        <span className="metric-label">Eye Aspect Ratio</span>
-                        <span className="metric-value mono">
-                            {ear.toFixed(3)}
-                        </span>
-                        <div className="progress-bar">
-                            <div
-                                className="progress-fill"
-                                style={{
-                                    width: `${Math.min(ear * 100 * 3, 100)}%`,
-                                    background:
-                                        ear < 0.25 ? 'var(--color-danger)' : 'var(--color-safe)',
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <div className="metric-card">
-                        <span className="metric-label">Head Tilt</span>
-                        <span className="metric-value mono">
-                            {pitch.toFixed(1)}°
-                        </span>
-                        <div className="progress-bar">
-                            <div
-                                className="progress-fill"
-                                style={{
-                                    width: `${Math.min(Math.abs(pitch) * 2, 100)}%`,
-                                    background:
-                                        pitch < -10
-                                            ? 'var(--color-danger)'
-                                            : 'var(--color-primary)',
-                                }}
-                            />
-                        </div>
-                    </div>
+                <div className="metric-card">
+                    <span className="metric-label">HEAD STABILITY</span>
+                    <span className="metric-value" style={{ color: headStabilityColor }}>
+                        {headStability.toFixed(0)}%
+                    </span>
+                </div>
+                <div className="metric-card">
+                    <span className="metric-label">YAWN COUNT</span>
+                    <span className="metric-value" style={{ color: yawningColor }}>
+                        {yawningCount}
+                    </span>
                 </div>
             </div>
 
-            <div className="timeline-section">
-                <div className="timeline-header">
-                    <span className="metric-label">Fatigue Timeline</span>
-                    <span className="timeline-window-label">Last 5 minutes</span>
-                </div>
-                <div className="timeline-chart">
-                    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                        <defs>
-                            <linearGradient id="fatigueGradient" x1="0" x2="1" y1="0" y2="0">
-                                <stop offset="0%" stopColor="var(--color-safe)" />
-                                <stop offset="40%" stopColor="var(--color-warning-soft)" />
-                                <stop offset="70%" stopColor="var(--color-warning)" />
-                                <stop offset="100%" stopColor="var(--color-danger)" />
-                            </linearGradient>
-                        </defs>
-                        <polyline
-                            className="timeline-line"
-                            fill="none"
-                            stroke="url(#fatigueGradient)"
-                            strokeWidth="1.5"
-                            points={trendPoints}
-                        />
-                    </svg>
+            <div style={{ marginTop: 'auto' }}>
+                <div className="timeline-section">
+                    <div className="timeline-header">
+                        <span className="metric-label">FATIGUE HISTORY</span>
+                        <span className="metric-label" style={{ opacity: 0.5 }}>Last 5M</span>
+                    </div>
+                    <div className="timeline-chart">
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <polyline
+                                className="timeline-line"
+                                fill="none"
+                                stroke="var(--color-frost)"
+                                strokeWidth="2"
+                                points={trendPoints}
+                            />
+                        </svg>
+                    </div>
                 </div>
             </div>
         </div>

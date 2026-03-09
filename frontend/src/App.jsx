@@ -1,81 +1,68 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import VideoFeed from './components/VideoFeed';
-import StatusPanel from './components/StatusPanel';
-import Alerts from './components/Alerts';
+import React, { useState } from 'react';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import Dashboard from './components/Dashboard';
 import './App.css';
 
 function App() {
-  const [status, setStatus] = useState({
-    state: "SAFE",
-    ear: 0,
-    pitch: 0,
-    yaw: 0,
-    is_alert: false,
-    alertness_score: 100,
-  });
-  const wsRef = useRef(null);
+  const [view, setView] = useState('login'); // 'login', 'signup', 'dashboard'
+  const [driverId, setDriverId] = useState(null);
+  const [driverName, setDriverName] = useState('');
+  const [sessionId, setSessionId] = useState(null);
 
-  // Connect to WebSocket
-  useEffect(() => {
-    // In production, use window.location.hostname
-    const ws = new WebSocket("ws://localhost:8000/ws");
-
-    ws.onopen = () => {
-      console.log("Connected to Backend");
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setStatus(data);
-      } catch (e) {
-        console.error("Parse error", e);
+  const startSession = async (loggedInDriverId) => {
+    try {
+      const response = await fetch('/api/start-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driver_id: loggedInDriverId })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setSessionId(data.session_id);
+      } else {
+        console.error("Failed to start session:", data);
       }
-    };
-
-    ws.onclose = () => {
-      console.log("WS Closed");
-      // Reconnect logic implementation needed for robust prod
-    };
-
-    wsRef.current = ws;
-
-    return () => {
-      ws.close();
-    };
-  }, []);
-
-  const handleVideoData = useCallback((data) => {
-    // Send data to backend for logic processing
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(data));
+    } catch (err) {
+      console.error("Connection error while starting session", err);
     }
+  };
 
-    // For immediate UI feedback (optional, but relying on backend provided 'status' ensures consistency)
-    // We update local display with raw values, but state comes from backend
-    // Actually, to avoid lag, let's wait for backend response
-  }, []);
+  const handleLogin = (id, name) => {
+    setDriverId(id);
+    setDriverName(name);
+    startSession(id);
+    setView('dashboard');
+  };
 
-  const isStrongAlert = status.is_alert || status.state === "DROWSY";
-  const isWarningAlert = status.state === "WARNING";
+  const handleLogout = () => {
+    setDriverId(null);
+    setDriverName('');
+    setSessionId(null);
+    setView('login');
+  };
 
   return (
-    <div className={`app-container ${status.state === "DROWSY" ? "alert-mode" : ""}`}>
-      <div className="glass-panel">
-        <header>
-          <h1><span className="highlight">DriveGuard</span></h1>
-        </header>
-
-        <div className="dashboard-content">
-          <div className="video-section">
-            <VideoFeed onData={handleVideoData} />
-          </div>
-          <div className="control-section">
-            <StatusPanel status={status} />
-          </div>
-        </div>
-      </div>
-      <Alerts isAlert={isStrongAlert} isWarning={isWarningAlert} />
+    <div className="main-wrapper" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {view === 'login' && (
+        <Login
+          onLogin={handleLogin}
+          onNavigateToSignup={() => setView('signup')}
+        />
+      )}
+      {view === 'signup' && (
+        <Signup
+          onNavigateToLogin={() => setView('login')}
+        />
+      )}
+      {view === 'dashboard' && (
+        <Dashboard
+          driverId={driverId}
+          sessionId={sessionId}
+          driverName={driverName}
+          onLogout={handleLogout}
+        />
+      )}
     </div>
   );
 }

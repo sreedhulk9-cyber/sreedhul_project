@@ -2,8 +2,14 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
-from .logic_engine import DrowsinessDetector
-from .driver_alertness import DriverAlertnessScorer
+from logic_engine import DrowsinessDetector
+from driver_alertness import DriverAlertnessScorer
+from database.models import init_db
+from database.db import get_db_connection
+from api_router import router as api_router
+
+# Initialize Database
+init_db()
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -14,11 +20,14 @@ app = FastAPI()
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify the frontend origin
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include API Router
+app.include_router(api_router)
 
 # Initialize Detector Logic
 detector = DrowsinessDetector()
@@ -35,15 +44,13 @@ async def websocket_endpoint(websocket: WebSocket):
     
     try:
         while True:
-            # Receive data from frontend
-            # Expected schema: { "ear": float, "pitch": float, "yaw": float, "timestamp": float }
             data_text = await websocket.receive_text()
             data = json.loads(data_text)
             
-            # Process through logic engine (detection logic unchanged)
+            # Process through logic engine
             result = detector.process_frame(data)
 
-            # Update continuous driver alertness score (read-only for UI)
+            # Update alertness score
             try:
                 timestamp = float(data.get("timestamp", 0.0))
                 ear = float(data.get("ear", 1.0))
@@ -58,10 +65,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 result["alertness_score"] = round(score, 1)
             except Exception as e:
                 logger.error(f"Error updating alertness score: {e}")
-                # Fall back to the last known score if available
                 result.setdefault("alertness_score", alertness_scorer.get_score())
 
-            # Send result back to frontend
             await websocket.send_text(json.dumps(result))
             
     except WebSocketDisconnect:
@@ -72,3 +77,34 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.close()
         except:
             pass
+# --- Debug Endpoints (Read-Only) ---
+
+@app.get("/debug/drivers")
+async def debug_drivers():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT driver_id, driver_name, username, created_at FROM drivers")
+        drivers = cursor.fetchall()
+        return drivers
+    finally:
+        conn.close()
+
+@app.get("/debug/features")
+async def debug_features():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            SELECT 
+                session_id, timestamp, blink_rate, eye_closure_duration, yawn_probability,
+                head_pitch, head_yaw, head_roll, eye_aspect_ratio, mouth_aspect_ratio,
+                consciousness_score, drowsiness_flag
+            FROM driver_features
+            ORDER BY timestamp DESC
+            LIMIT 100
+        ''')
+        features = cursor.fetchall()
+        return features
+    finally:
+        conn.close()

@@ -180,7 +180,7 @@ class DriverAlertnessScorer:
         blink_freq_excess = max(0.0, blink_frequency - 20.0) / 20.0
 
         # Yawns and nods are already "per minute" rates
-        yawn_factor = max(0.0, yawning_frequency)
+        yawn_factor = max(0.0, yawn_frequency)
         nod_factor = max(0.0, nod_frequency)
 
         # Aggregate fatigue load from different behaviors
