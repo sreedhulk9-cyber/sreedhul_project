@@ -117,7 +117,7 @@ body {
 .glass-panel {
   width: 95%;
   max-width: 1500px;
-  height: 90%;
+  height: 95%;
   background: var(--color-glass);
   backdrop-filter: blur(20px) saturate(150%);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
@@ -125,7 +125,7 @@ body {
   border-radius: 40px;
   display: flex;
   flex-direction: column;
-  padding: 3rem;
+  padding: 1.5rem 2rem;
   box-shadow: 0 0 40px rgba(0, 255, 204, 0.2), inset 0 0 30px rgba(0, 255, 204, 0.15);
   position: relative;
   overflow: hidden;
@@ -161,7 +161,7 @@ body {
 }
 
 header {
-  margin-bottom: 3rem;
+  margin-bottom: 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -192,7 +192,7 @@ header .highlight {
 .dashboard-content {
   display: flex;
   flex: 1;
-  gap: 3rem;
+  gap: 2rem;
   min-height: 0;
 }
 
@@ -236,13 +236,13 @@ header .highlight {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
 }
 
 .status-panel {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1rem;
   padding: 0;
   background: transparent;
   border: none;
@@ -276,12 +276,12 @@ header .highlight {
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .metric-card {
   background: rgba(0, 255, 204, 0.05);
-  padding: 1.5rem;
+  padding: 0.75rem 1rem;
   border-radius: 12px;
   border: 1px solid var(--color-border);
   border-left: 4px solid var(--color-safe);
@@ -619,7 +619,7 @@ header .highlight {
 .timeline-chart {
   position: relative;
   width: 100%;
-  height: 80px;
+  height: 50px;
   border-radius: 10px;
   background: radial-gradient(circle at top left, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3));
   border: 1px solid rgba(255, 255, 255, 0.08);

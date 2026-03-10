@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FaCheckCircle, FaExclamationTriangle, FaBed } from 'react-icons/fa';
 import classNames from 'classnames';
+import AlertnessAnalysisGraph from './AlertnessAnalysisGraph';
 
 const StatusPanel = ({ status, onMetricsUpdate }) => {
     // status: { state, ear, pitch, yaw, is_alert, alertness_score?, yawn_count? }
@@ -273,25 +274,7 @@ const StatusPanel = ({ status, onMetricsUpdate }) => {
                 </div>
             </div>
 
-            <div style={{ marginTop: 'auto' }}>
-                <div className="timeline-section">
-                    <div className="timeline-header">
-                        <span className="metric-label">FATIGUE HISTORY</span>
-                        <span className="metric-label" style={{ opacity: 0.5 }}>Last 5M</span>
-                    </div>
-                    <div className="timeline-chart">
-                        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                            <polyline
-                                className="timeline-line"
-                                fill="none"
-                                stroke="var(--color-frost)"
-                                strokeWidth="2"
-                                points={trendPoints}
-                            />
-                        </svg>
-                    </div>
-                </div>
-            </div>
+            <AlertnessAnalysisGraph trendPoints={trendPoints} />
         </div>
     );
 };

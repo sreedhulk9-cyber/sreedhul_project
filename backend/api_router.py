@@ -155,3 +155,34 @@ async def get_driver_predictions(driver_id: int):
         return {"predictions": predictions}
     finally:
         conn.close()
+
+@router.get("/fatigue-trend/{session_id}")
+async def get_fatigue_trend(session_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Get alertness scores from last 5 minutes
+        cursor.execute('''
+            SELECT timestamp, consciousness_score
+            FROM driver_features
+            WHERE session_id = ? AND timestamp >= datetime('now', '-5 minutes')
+            ORDER BY timestamp ASC
+        ''', (session_id,))
+        features = cursor.fetchall()
+        
+        # Get sleep probabilities from last 5 minutes
+        cursor.execute('''
+            SELECT timestamp, sleep_probability
+            FROM driver_sleep_predictions
+            WHERE session_id = ? AND timestamp >= datetime('now', '-5 minutes')
+            ORDER BY timestamp ASC
+        ''', (session_id,))
+        predictions = cursor.fetchall()
+        
+        return {
+            "features": [{"timestamp": r["timestamp"], "alertness_score": r["consciousness_score"]} for r in features],
+            "predictions": [{"timestamp": r["timestamp"], "sleep_probability": r["sleep_probability"]} for r in predictions]
+        }
+    finally:
+        conn.close()

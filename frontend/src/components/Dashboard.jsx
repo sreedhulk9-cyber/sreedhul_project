@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import VideoFeed from './VideoFeed';
 import StatusPanel from './StatusPanel';
 import Alerts from './Alerts';
+import FatigueTrendGraph from './FatigueTrendGraph';
 
 const Dashboard = ({ driverId, sessionId, driverName, onLogout, onNavigateToHistory }) => {
     const [status, setStatus] = useState({
@@ -43,11 +44,14 @@ const Dashboard = ({ driverId, sessionId, driverName, onLogout, onNavigateToHist
                 audioRef.current = new Audio('/alarm.mp3');
                 audioRef.current.loop = true;
             }
-            // Mute errors on strict browsers if user hasn't interacted
-            audioRef.current.play().catch(e => console.log("Audio requires interaction first", e));
+            if (audioRef.current.paused) {
+                audioRef.current.play().catch(e => console.log("Audio requires interaction first", e));
+            }
         } else {
             if (audioRef.current) {
-                audioRef.current.pause();
+                if (!audioRef.current.paused) {
+                    audioRef.current.pause();
+                }
                 audioRef.current.currentTime = 0;
             }
         }
@@ -195,7 +199,7 @@ const Dashboard = ({ driverId, sessionId, driverName, onLogout, onNavigateToHist
                         boxShadow: `0 0 15px ${sleepProbability > 0.75 ? 'rgba(255, 51, 51, 0.3)' : sleepProbability > 0.50 ? 'rgba(212, 255, 0, 0.3)' : 'rgba(0, 255, 204, 0.3)'}`
                     }}>
                         {sleepProbability > 0.75
-                            ? "CRITICAL WARNING: HIGH PROBABILITY OF SLEEP DETECTED – PULL OVER IMMEDIATELY"
+                            ? "High Sleep Risk – Stop and Rest Immediately"
                             : sleepProbability > 0.50
                                 ? "Driver Fatigue Increasing – Consider Taking a Break"
                                 : "Early Fatigue Detected – Stay Alert"
@@ -209,6 +213,9 @@ const Dashboard = ({ driverId, sessionId, driverName, onLogout, onNavigateToHist
                     </div>
                     <div className="control-section">
                         <StatusPanel status={status} onMetricsUpdate={(m) => metricsRef.current = m} />
+                        {sessionId && (
+                            <FatigueTrendGraph sessionId={sessionId} />
+                        )}
                     </div>
                 </div>
             </div>
