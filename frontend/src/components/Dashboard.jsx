@@ -3,7 +3,7 @@ import VideoFeed from './VideoFeed';
 import StatusPanel from './StatusPanel';
 import Alerts from './Alerts';
 
-const Dashboard = ({ driverId, sessionId, driverName, onLogout }) => {
+const Dashboard = ({ driverId, sessionId, driverName, onLogout, onNavigateToHistory }) => {
     const [status, setStatus] = useState({
         state: "SAFE",
         ear: 0,
@@ -12,6 +12,47 @@ const Dashboard = ({ driverId, sessionId, driverName, onLogout }) => {
         is_alert: false,
         alertness_score: 100,
     });
+    const [sleepProbability, setSleepProbability] = useState(0);
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        if (!driverId) return;
+
+        const fetchPrediction = async () => {
+            try {
+                const res = await fetch(`/api/driver-predictions/${driverId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.predictions && data.predictions.length > 0) {
+                        setSleepProbability(data.predictions[0].sleep_probability);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch prediction", e);
+            }
+        };
+
+        fetchPrediction();
+        const interval = setInterval(fetchPrediction, 5000);
+        return () => clearInterval(interval);
+    }, [driverId]);
+
+    useEffect(() => {
+        if (sleepProbability > 0.75) {
+            if (!audioRef.current) {
+                audioRef.current = new Audio('/alarm.mp3');
+                audioRef.current.loop = true;
+            }
+            // Mute errors on strict browsers if user hasn't interacted
+            audioRef.current.play().catch(e => console.log("Audio requires interaction first", e));
+        } else {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+            }
+        }
+    }, [sleepProbability]);
+
     const wsRef = useRef(null);
     const statusRef = useRef(status);
 
@@ -54,24 +95,33 @@ const Dashboard = ({ driverId, sessionId, driverName, onLogout }) => {
         }
     }, []);
 
+    const metricsRef = useRef({
+        blinkRate: 0,
+        eyeClosureDuration: 0,
+        yawnCount: 0,
+        headStability: 100,
+        score: 100
+    });
+
     // Record Features Periodically
     useEffect(() => {
         if (!sessionId) return;
 
         const interval = setInterval(() => {
             const currentStatus = statusRef.current;
+            const currentMetrics = metricsRef.current;
 
             const featureData = {
                 session_id: sessionId,
-                blink_rate: 0,
-                eye_closure_duration: 0,
-                yawn_probability: 0,
+                blink_rate: currentMetrics.blinkRate || 0,
+                eye_closure_duration: currentMetrics.eyeClosureDuration || 0,
+                yawn_probability: currentMetrics.yawnCount > 0 ? 1.0 : 0.0,
                 head_pitch: currentStatus.pitch || 0,
                 head_yaw: currentStatus.yaw || 0,
                 head_roll: 0,
                 eye_aspect_ratio: currentStatus.ear || 0,
                 mouth_aspect_ratio: 0,
-                consciousness_score: currentStatus.alertness_score || 100,
+                consciousness_score: currentMetrics.score || 100,
                 drowsiness_flag: currentStatus.is_alert || currentStatus.state === "DROWSY" ? 1 : 0
             };
 
@@ -119,18 +169,46 @@ const Dashboard = ({ driverId, sessionId, driverName, onLogout }) => {
                         <div style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--color-frost)' }}>
                             {driverName}
                         </div>
-                        <button onClick={handleEndSession} className="btn-logout" style={{ marginTop: '0.5rem' }}>
-                            Terminate Session
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                            <button onClick={onNavigateToHistory} className="btn-secondary" style={{ padding: '0.5rem 1rem' }}>
+                                My Driving Status
+                            </button>
+                            <button onClick={handleEndSession} className="btn-logout" style={{ padding: '0.5rem 1rem' }}>
+                                Terminate Session
+                            </button>
+                        </div>
                     </div>
                 </header>
+
+                {sleepProbability > 0.25 && (
+                    <div style={{
+                        padding: '1rem',
+                        marginBottom: '2rem',
+                        textAlign: 'center',
+                        borderRadius: '8px',
+                        fontWeight: 'bold',
+                        letterSpacing: '2px',
+                        textTransform: 'uppercase',
+                        border: `1px solid ${sleepProbability > 0.75 ? 'var(--color-danger)' : sleepProbability > 0.50 ? 'var(--color-warning)' : 'var(--color-safe)'}`,
+                        color: sleepProbability > 0.75 ? 'var(--color-danger)' : sleepProbability > 0.50 ? 'var(--color-warning)' : 'var(--color-safe)',
+                        backgroundColor: sleepProbability > 0.75 ? 'rgba(255, 51, 51, 0.1)' : sleepProbability > 0.50 ? 'rgba(212, 255, 0, 0.1)' : 'rgba(0, 255, 204, 0.1)',
+                        boxShadow: `0 0 15px ${sleepProbability > 0.75 ? 'rgba(255, 51, 51, 0.3)' : sleepProbability > 0.50 ? 'rgba(212, 255, 0, 0.3)' : 'rgba(0, 255, 204, 0.3)'}`
+                    }}>
+                        {sleepProbability > 0.75
+                            ? "CRITICAL WARNING: HIGH PROBABILITY OF SLEEP DETECTED – PULL OVER IMMEDIATELY"
+                            : sleepProbability > 0.50
+                                ? "Driver Fatigue Increasing – Consider Taking a Break"
+                                : "Early Fatigue Detected – Stay Alert"
+                        }
+                    </div>
+                )}
 
                 <div className="dashboard-content">
                     <div className="video-section">
                         <VideoFeed onData={handleVideoData} />
                     </div>
                     <div className="control-section">
-                        <StatusPanel status={status} />
+                        <StatusPanel status={status} onMetricsUpdate={(m) => metricsRef.current = m} />
                     </div>
                 </div>
             </div>

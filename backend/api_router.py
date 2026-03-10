@@ -123,3 +123,35 @@ async def end_session(req: EndSessionRequest):
         conn.close()
     
     return {"message": "Session ended"}
+
+@router.get("/driver-predictions/{driver_id}")
+async def get_driver_predictions(driver_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            SELECT p.id, p.session_id, p.timestamp, p.sleep_probability, p.risk_level,
+                   s.start_time
+            FROM driver_sleep_predictions p
+            JOIN driving_sessions s ON p.session_id = s.session_id
+            WHERE s.driver_id = ?
+            ORDER BY p.timestamp DESC
+            LIMIT 100
+        ''', (driver_id,))
+        rows = cursor.fetchall()
+        
+        predictions = []
+        for row in rows:
+            predictions.append({
+                "id": row["id"],
+                "session_id": row["session_id"],
+                "timestamp": row["timestamp"],
+                "sleep_probability": row["sleep_probability"],
+                "risk_level": row["risk_level"],
+                "session_start_time": row["start_time"]
+            })
+            
+        return {"predictions": predictions}
+    finally:
+        conn.close()

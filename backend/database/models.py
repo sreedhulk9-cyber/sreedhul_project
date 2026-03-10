@@ -43,6 +43,34 @@ def init_db():
         FOREIGN KEY (session_id) REFERENCES driving_sessions(session_id)
     )
     ''')
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS driver_feature_summary (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        start_time TIMESTAMP,
+        end_time TIMESTAMP,
+        avg_blink_rate REAL,
+        avg_eye_closure_duration REAL,
+        avg_yawn_probability REAL,
+        avg_head_pitch REAL,
+        avg_head_yaw REAL,
+        avg_head_roll REAL,
+        avg_consciousness_score REAL,
+        FOREIGN KEY (session_id) REFERENCES driving_sessions(session_id)
+    )
+    ''')
+    
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS driver_sleep_predictions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        sleep_probability REAL,
+        risk_level TEXT,
+        FOREIGN KEY (session_id) REFERENCES driving_sessions(session_id)
+    )
+    ''')
     
     conn.commit()
     conn.close()

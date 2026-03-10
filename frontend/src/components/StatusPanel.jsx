@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FaCheckCircle, FaExclamationTriangle, FaBed } from 'react-icons/fa';
 import classNames from 'classnames';
 
-const StatusPanel = ({ status }) => {
+const StatusPanel = ({ status, onMetricsUpdate }) => {
     // status: { state, ear, pitch, yaw, is_alert, alertness_score?, yawn_count? }
     const { state, ear = 0, pitch = 0, yaw = 0, alertness_score } = status;
 
@@ -19,51 +19,60 @@ const StatusPanel = ({ status }) => {
     const nowSeconds = () => Date.now() / 1000;
 
     const ALERTNESS_MAX = 100;
-    const backendScore =
-        typeof alertness_score === 'number' ? alertness_score : null;
-
-    // Fallback mapping from high-level state → approximate score when
-    // backend score is missing or too optimistic for the current state.
-    const fallbackScoreFromState = (() => {
-        switch (state) {
-            case "DROWSY":
-                return 30;
-            case "WARNING":
-                return 60;
-            case "SAFE":
-                return 90;
-            default:
-                return 80;
-        }
-    })();
-
-    let combinedScore;
-    if (backendScore == null) {
-        combinedScore = fallbackScoreFromState;
-    } else if (state === "SAFE") {
-        combinedScore = backendScore;
-    } else {
-        // When the high-level state indicates fatigue, do not show a score
-        // higher than the state-based fallback to keep the gauge intuitive.
-        combinedScore = Math.min(backendScore, fallbackScoreFromState);
-    }
-
-    const score = Math.max(0, Math.min(ALERTNESS_MAX, combinedScore));
-
+    const backendScore = typeof alertness_score === 'number' ? alertness_score : 100;
     const yawningCount = typeof status.yawn_count === 'number' ? status.yawn_count : 0;
 
+    let calculatedScore = backendScore;
+
+    // Apply continuous deductions based on real-time metrics
+    if (currentClosureDuration > 0.2) calculatedScore -= (currentClosureDuration * 15);
+    if (blinkRate > 20) calculatedScore -= (blinkRate - 15);
+    if (yawningCount > 0) calculatedScore -= (yawningCount * 5);
+    if (headStability < 90) calculatedScore -= ((100 - headStability) * 0.5);
+
+    // Apply explicit threshold checks to enforce risk bounds
+    let riskCategory = "LOW";
+
+    // HIGH Risk Bounds
+    if (
+        currentClosureDuration > 1.0 ||
+        blinkRate > 30 ||
+        yawningCount >= 3 ||
+        headStability < 50 ||
+        calculatedScore < 50
+    ) {
+        riskCategory = "HIGH";
+        if (calculatedScore >= 50) calculatedScore = 45; // force below 50
+    }
+    // MEDIUM Risk Bounds
+    else if (
+        currentClosureDuration > 0.4 ||
+        blinkRate > 22 ||
+        yawningCount >= 1 ||
+        headStability < 75 ||
+        calculatedScore < 80
+    ) {
+        riskCategory = "MEDIUM";
+        if (calculatedScore >= 80) calculatedScore = 75; // force below 80
+        if (calculatedScore < 50) calculatedScore = 55; // force above 50
+    }
+    // LOW Risk Bounds
+    else {
+        riskCategory = "LOW";
+        if (calculatedScore < 80) calculatedScore = 85; // force above 80
+    }
+
+    const score = Math.max(0, Math.min(ALERTNESS_MAX, calculatedScore));
+
     const getGaugeColor = (value) => {
-        if (value >= 75) return 'var(--color-safe)';
-        if (value >= 60) return 'var(--color-warning-soft)';
-        if (value >= 40) return 'var(--color-warning)';
-        if (value >= 25) return 'var(--color-orange-deep)';
+        if (value >= 80) return 'var(--color-safe)';
+        if (value >= 50) return 'var(--color-warning)';
         return 'var(--color-danger)';
     };
 
     const getDriverStatusText = (value) => {
-        if (value >= 80) return 'Fully Alert';
-        if (value >= 65) return 'Mild Fatigue';
-        if (value >= 45) return 'Drowsy';
+        if (value >= 80) return 'Driver Alert';
+        if (value >= 50) return 'Stay Focused';
         return 'High Risk – Take a Break';
     };
 
@@ -161,6 +170,18 @@ const StatusPanel = ({ status }) => {
         });
     }, [ear, pitch, yaw, score]);
 
+    useEffect(() => {
+        if (onMetricsUpdate) {
+            onMetricsUpdate({
+                blinkRate,
+                eyeClosureDuration: currentClosureDuration,
+                yawnCount: yawningCount,
+                headStability,
+                score
+            });
+        }
+    }, [blinkRate, currentClosureDuration, yawningCount, headStability, score, onMetricsUpdate]);
+
     const trendPoints = (() => {
         if (!timelineSamples.length) return '';
         const now = nowSeconds();
@@ -217,8 +238,8 @@ const StatusPanel = ({ status }) => {
                             className="battery-fill"
                             style={{
                                 width: `${Math.max(8, score)}%`,
-                                background: score < 30 ? 'var(--color-danger)' : 'linear-gradient(90deg, var(--color-icy) 0%, #fff 100%)',
-                                boxShadow: score > 30 ? '0 0 20px rgba(165, 193, 229, 0.4)' : '0 0 20px rgba(255, 92, 92, 0.4)'
+                                background: score < 50 ? 'var(--color-danger)' : 'linear-gradient(90deg, var(--color-frost) 0%, #fff 100%)',
+                                boxShadow: score > 50 ? '0 0 20px rgba(0, 255, 204, 0.4)' : '0 0 20px rgba(255, 51, 51, 0.6)'
                             }}
                         />
                     </div>

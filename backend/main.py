@@ -7,15 +7,26 @@ from driver_alertness import DriverAlertnessScorer
 from database.models import init_db
 from database.db import get_db_connection
 from api_router import router as api_router
-
-# Initialize Database
-init_db()
+from prediction_sync import start_background_predictions
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("DrowsyBackend")
 
 app = FastAPI()
+
+@app.on_event("startup")
+def startup_event():
+    # Initialize Database
+    init_db()
+    
+    # Fully activate and bind prediction engine continuously per session
+    app.state.scheduler = start_background_predictions()
+
+@app.on_event("shutdown")
+def shutdown_event():
+    if hasattr(app.state, "scheduler"):
+        app.state.scheduler.shutdown()
 
 # CORS configuration
 app.add_middleware(
@@ -108,3 +119,7 @@ async def debug_features():
         return features
     finally:
         conn.close()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

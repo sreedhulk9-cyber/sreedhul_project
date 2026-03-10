@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Dashboard from './components/Dashboard';
+import MyDrivingStatus from './components/MyDrivingStatus';
 import './App.css';
 
 function App() {
@@ -61,6 +62,13 @@ function App() {
           sessionId={sessionId}
           driverName={driverName}
           onLogout={handleLogout}
+          onNavigateToHistory={() => setView('history')}
+        />
+      )}
+      {view === 'history' && (
+        <MyDrivingStatus
+          driverId={driverId}
+          onBack={() => setView('dashboard')}
         />
       )}
     </div>
